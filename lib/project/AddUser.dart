@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:matrimonial_app/database/databaseHelper.dart';
@@ -33,12 +35,26 @@ class _AdduserState extends State<AddUser> {
   String? selectedgender;
   int age = 0;
   String dob = 'Select DOB';
-
+  bool? isFav;
   DateTime? date = DateTime.now();
 
   final _kaka = GlobalKey<FormState>();
   @override
   void initState() {
+    first_name.text = widget.user?.firstName??'';
+    last_name.text = widget.user?.lastName??'';
+    email.text = widget.user?.email??'';
+    mobile.text = widget.user?.mobile??'';
+    password.text = widget.user?.pass??'';
+    selectedHobbies = widget.user?.hobbies.split(',').toList()??[];
+    selectedCity= widget.user?.city??'';
+    dob = widget.user?.dob ??'';
+    selectedgender = widget.user?.gender ??'';
+    isFav=widget.user?.isFav??false;
+    age = widget.user?.age ??0;
+    password.text = widget.user?.pass ??'';
+    confirm_password.text = widget.user?.pass ??'';
+
     super.initState();
     DateTime today= DateTime.now();
     date=DateTime(today.year-18,today.month,today.day);
@@ -50,18 +66,32 @@ class _AdduserState extends State<AddUser> {
 
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(25),
+          ),
+        ),
         title: Text('Add a User',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.indigo.shade700,
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600,fontFamily: "Font1",color: Colors.white)),
+        backgroundColor: Colors.pinkAccent,
         elevation: 5,
       ),
+
       body: Container(
-        color: Colors.grey.shade100,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.pinkAccent.shade100, Colors.white],
+          ),
+        ),
+
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Form(
@@ -132,6 +162,7 @@ class _AdduserState extends State<AddUser> {
                     controller: mobile,
                     decoration: _inputDecoration('Enter mobile number'),
                     keyboardType: TextInputType.phone,
+                    maxLength: 10,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your mobile number';
@@ -237,7 +268,7 @@ class _AdduserState extends State<AddUser> {
 
                   onPressed: addOrUpdateUser,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo.shade700,
+                    backgroundColor: Colors.pinkAccent.shade200,
                     padding: EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -280,11 +311,11 @@ class _AdduserState extends State<AddUser> {
       hintText: hint,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade400),
+        borderSide: BorderSide(color: Colors.pinkAccent.shade400),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
+        borderSide: BorderSide(color: Colors.pinkAccent, width: 2),
       ),
       errorStyle: TextStyle(color: Colors.red),
       errorBorder: OutlineInputBorder(
@@ -360,7 +391,11 @@ class _AdduserState extends State<AddUser> {
     if (!isValid) {
       print("Validation failed.");
     }
-
+    if (password.text != confirm_password.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Passwords do not match')),
+      );
+    }
     if (isValid) {
       final isUpdating = widget.user != null;
 
@@ -374,7 +409,22 @@ class _AdduserState extends State<AddUser> {
     }
   }
   Future updateUser() async {
+    String hobbies = selectedHobbies.join(',');
+    final updateduser = widget.user!.copy(
+      firstName: first_name.text,
+      lastName: last_name.text,
+      isFav: false,
+      email: email.text,
+      mobile: mobile.text,
+      gender: selectedgender,
+      city: selectedCity,
+      dob: dob,
+      age: age,
+      hobbies: hobbies,
+      pass: password.text,
+    );
 
+    await UserDatabase.instance.update(updateduser);
   }
 
   Future addUser() async {
@@ -409,14 +459,14 @@ class _AdduserState extends State<AddUser> {
 class Hobbies extends StatefulWidget {
   final Function(List<String>) onHobbiesChanged;
 
-  const Hobbies({super.key, required this.onHobbiesChanged});
+  const Hobbies({super.key, required this.onHobbiesChanged,String? hobies});
 
   @override
   State<Hobbies> createState() => _HobbiesState();
 }
 
 class _HobbiesState extends State<Hobbies> {
-  final List<String> _selectedHobbies = [];
+  final List<String> _selectedHobbies =  [];
 
   void _handleHobbyChange(String hobby, bool selected) {
     setState(() {
@@ -443,12 +493,12 @@ class _HobbiesState extends State<Hobbies> {
             label: Text(hobby),
             selected: _selectedHobbies.contains(hobby),
             onSelected: (selected) => _handleHobbyChange(hobby, selected),
-            selectedColor: Colors.indigo.shade100,
-            checkmarkColor: Colors.indigo.shade700,
+            selectedColor: Colors.pinkAccent,
+            checkmarkColor: Colors.white,
             labelStyle: TextStyle(
               color: _selectedHobbies.contains(hobby)
-                  ? Colors.indigo.shade700
-                  : Colors.grey.shade800,
+                  ? Colors.white
+                  : Colors.pinkAccent,
             ),
           )).toList(),
         ),

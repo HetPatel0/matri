@@ -5,7 +5,8 @@ import 'package:matrimonial_app/project/AddUser.dart';
 import 'package:matrimonial_app/project/homepage.dart';
 
 class UserList extends StatefulWidget {
-  const UserList({super.key});
+  const UserList({Key? key}) : super(key: key);
+
   @override
   State<UserList> createState() => _UserListState();
 }
@@ -20,29 +21,56 @@ class _UserListState extends State<UserList> {
   @override
   void initState() {
     super.initState();
-    refreshNotes();
+    refreshUsers();
+  }
+  void showDeleteConfirmationDialog(BuildContext context,UserListData user) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirm Deletion'),
+          content: Text('Are you sure you want to delete this item?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async{
+                await UserDatabase.instance.delete(user.id!);
+                setState(() {
+
+                  users.remove(user);
+                  _filteredUsers.remove(user);
+
+                });
+                Navigator.of(context).pop(); // Close dialog
+                // Call the delete function
+              },
+              child: Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
-  @override
-  void dispose() {
-    UserDatabase.instance.close();
-
-    super.dispose();
-  }
   void _updateFilteredUsers(String query) {
     setState(() {
       if (query.isEmpty) {
         _filteredUsers = users;
       } else {
         _filteredUsers = users.where((user) {
-          return user.firstName.toLowerCase().contains(query.toLowerCase()) ||
-              user.city.toString().toLowerCase().contains(query.toLowerCase());
+          return user.firstName.toLowerCase().contains(query.toLowerCase()) ;
         }).toList();
       }
     });
   }
 
-  Future refreshNotes() async {
+  Future refreshUsers() async {
     final data = await UserDatabase.instance.readAllUser();
     setState(() {
       users = data;
@@ -53,118 +81,295 @@ class _UserListState extends State<UserList> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // AppBar
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('User Details List',
-            style: TextStyle(fontFamily: "Font1")),
-        backgroundColor: Colors.indigo,
+        title: const Text(
+          'All Users',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600,fontFamily: "Font1",color: Colors.white),
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(25),
+          ),
+        ),
+        backgroundColor: Colors.pinkAccent,
+        elevation: 0,
       ),
-      body: Center(
-        child: users.isEmpty
-            ? const Text(
-                'No Users',
-                style: TextStyle(color: Colors.black, fontSize: 24),
+
+      // Body
+      body: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.pinkAccent.shade100, Colors.white],
+          ),
+        ),
+        child: Column(
+          children: [
+            // Extra top spacing to ensure the body doesn't hide under AppBar
+            const SizedBox(height: 80),
+
+            // Search Bar
+            _buildSearchBar(),
+
+            // User List
+            Expanded(
+              child: users.isEmpty
+                  ? const Center(
+                child: Text(
+                  'No Users',
+                  style: TextStyle(color: Colors.black, fontSize: 24),
+                ),
               )
-            : buildUsers(),
+                  : _buildUserListView(),
+            ),
+          ],
+        ),
       ),
+
+      // FloatingActionButton
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.pinkAccent.shade100,
         child: const Icon(Icons.add),
         onPressed: () async {
           await Navigator.of(context).push(
             MaterialPageRoute(builder: (context) => AddUser()),
           );
-
-          refreshNotes();
+          refreshUsers();
         },
       ),
     );
   }
 
-  Widget buildUsers() {
-    return Column(
-      children: [
-        const SizedBox(height: 30),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: searchController,
-                decoration: InputDecoration(
-                  labelText: 'Search here',
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(11),
-                    borderSide: const BorderSide(color: Colors.black, width: 2),
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextFormField(
+              controller: searchController,
+              onFieldSubmitted: _updateFilteredUsers,
+              decoration: InputDecoration(
+                hintText: 'Search people & places',
+                hintStyle: TextStyle(color: Colors.grey.shade600),
+                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(11),
+                  borderSide: const BorderSide(
+                    color: Colors.pinkAccent,
+                    width: 2,
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(11),
-                    borderSide:
-                        const BorderSide(color: Colors.blueAccent, width: 2),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(11),
+                  borderSide: const BorderSide(
+                    color: Colors.pinkAccent,
+                    width: 2,
                   ),
                 ),
               ),
             ),
-            Container(
-              width: 100,
-              child: IconButton(
-                icon: Icon(Icons.search),
-                onPressed: () {
-                  _updateFilteredUsers(searchController.text);
-                },
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () {
+              _updateFilteredUsers(searchController.text);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.pinkAccent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(11),
               ),
-            )
-          ],
-        ),
-        const SizedBox(height: 20),
-        Expanded(
-          child: ListView.builder(
-            itemCount:  _filteredUsers.length,
-            itemBuilder: (context, index) {
-              UserListData user = _filteredUsers[index];
-              return Container(
-                margin: EdgeInsets.symmetric(vertical: 4.0),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(8.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.5),
-                      spreadRadius: 2,
-                      blurRadius: 5,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
+            ),
+            child: const Icon(Icons.search, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildUserListView() {
+    return ListView.builder(
+      itemCount: _filteredUsers.length,
+      itemBuilder: (context, index) {
+        UserListData user = _filteredUsers[index];
+        return _buildUserCard(user);
+      },
+    );
+  }
+
+
+  Widget _buildUserCard(UserListData user) {
+    // Example age (if your model doesn't store it, use a placeholder)
+    String age = user.age?.toString() ?? "24"; // or compute from DOB if needed
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.pink.withOpacity(0.3),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10.0),
+        child: Column(
+          children: [
+            // ────────────── TOP ROW: Avatar, Name+Age, Heart, 3-dot ──────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Avatar
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.pinkAccent.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 30,
+                  ),
                 ),
-                child: ListTile(
-                  title: Text("${user.firstName} ${user.lastName}",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  subtitle: Text("City: ${user.city}, Mobile: ${user.mobile}"),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
+                const SizedBox(width: 10),
+
+                // Name & Age
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      IconButton(
-                        icon: Icon(Icons.favorite, color: Colors.blue),
-                        onPressed: () {},
+                      Text(
+                        "${user.firstName} ${user.lastName}",
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () {},
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          // showDeleteConfirmationDialog(context,user);
-                        },
+                      Text(
+                        "$age years",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade700,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              );
-            },
-          ),
+
+                // Heart icon
+                IconButton(
+                  icon: Icon( user.isFav?Icons.favorite : Icons.favorite_border),
+                  color: Colors.pinkAccent,
+                  onPressed: () async{
+                    setState(() {
+                      user.isFav = !user.isFav;
+                    });
+                    await UserDatabase.instance.update(user);
+
+                  },
+                ),
+
+                // 3-dot menu icon
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    // Handle menu actions
+                  },
+                  itemBuilder: (context) => [
+                     PopupMenuItem(
+                      value: 'edit',
+                      child: Text('Edit'),
+                        onTap: () async {
+
+                          await Navigator.of(context).push(MaterialPageRoute(
+                            builder: (context) => AddUser(user: user),
+                          ));
+
+                          refreshUsers();
+
+
+                        }
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Delete'),
+                      onTap: () => showDeleteConfirmationDialog(context, user),
+                    ),
+                  ],
+                  icon: const Icon(Icons.more_vert, color: Colors.grey),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            // ────────────── BOTTOM ROW: Location, Phone, Email ──────────────
+            Row(
+              children: [
+                // Location
+                const Icon(Icons.location_on, color: Colors.orange, size: 18),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    user.city!,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                // Phone
+                const Icon(Icons.phone, color: Colors.green, size: 18),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    user.mobile,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                // Email
+                const Icon(Icons.email, color: Colors.blue, size: 18),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    user.email ?? "johndoe@example.com",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
